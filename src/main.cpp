@@ -9,7 +9,7 @@
 
 int main( int argc, char** argv )
 {
-    std::String inputImagePath("input.png");
+    cv::String inputImagePath("input.png");
     cv::Mat image;
 
     // If we've passed in an image, use that one instead
