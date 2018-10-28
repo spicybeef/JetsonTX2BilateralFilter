@@ -31,7 +31,7 @@ int main( int argc, char** argv )
 
     // Create window for display
     cv::namedWindow("Output", cv::WINDOW_NORMAL);
-    cv::resizeWindows("Output", 1024, 768);
+    cv::resizeWindow("Output", 1024, 768);
     // Show the image inside of it
     cv::imshow("Output", image);
     // Wait for a keystroke in the window
