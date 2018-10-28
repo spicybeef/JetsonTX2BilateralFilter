@@ -9,8 +9,8 @@
 
 int main( int argc, char** argv )
 {
-    String inputImagePath("input.png");
-    Mat image;
+    std::String inputImagePath("input.png");
+    cv::Mat image;
 
     // If we've passed in an image, use that one instead
     if( argc > 1)
@@ -19,7 +19,7 @@ int main( int argc, char** argv )
     }
 
     // Parse in the image
-    image = cv::imread(inputImagePath, IMREAD_GRAYSCALE);
+    image = cv::imread(inputImagePath, cv::IMREAD_GRAYSCALE);
 
     // Check if that worked
     if (image.empty())
@@ -30,9 +30,9 @@ int main( int argc, char** argv )
     }
 
     // Create window for display
-    cv::namedWindow( "Display window", WINDOW_AUTOSIZE );
+    cv::namedWindow("Display window", cv::WINDOW_AUTOSIZE);
     // Show the image inside of it
-    cv::imshow( "Display window", image );
+    cv::imshow("Display window", image);
     // Wait for a keystroke in the window
     cv::waitKey(0);
 
