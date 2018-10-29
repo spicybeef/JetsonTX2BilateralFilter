@@ -8,10 +8,16 @@
 
 #include "main.h"
 
+void bilateralNaive(std input, cv::Mat & output, uint32_t window, float sigmaD, float sigmalR)
+{
+
+}
+
 int main( int argc, char** argv )
 {
     cv::String inputImagePath("input.png");
     cv::Mat inputImage;
+    cv::Mat inputImageFloat;
     cv::Mat outputImage;
 
     // If we've passed in an image, use that one instead
@@ -31,8 +37,11 @@ int main( int argc, char** argv )
         return -1;
     }
 
+    // Convert input to float
+    inputImage.covertTo(inputImageFloat, CV_32F, 1, 0);
+
     // Try running the CV bilateral filter on it
-    cv::bilateralFilter(inputImage,outputImage,20,75,75);
+    cv::bilateralFilter(inputImageFloat,outputImage,20,50,50);
 
     // Create window for display
     cv::namedWindow("Output", cv::WINDOW_AUTOSIZE);
