@@ -8,10 +8,20 @@
 
 #include "main.h"
 
-// void bilateralNaive(std input, cv::Mat & output, uint32_t window, float sigmaD, float sigmalR)
-// {
+void matToFloatPtr(cv::Mat & inputMat, const float * outputFloat, int rows, int cols)
+{
 
-// }
+}
+
+void floatPtrToMat(const float * inputFloat, cv::Mat & outputMat, int rows, int cols)
+{
+    cv::Mat output(rows, cols, CV_32F);
+}
+
+void bilateralNaive(const float * input, const float * output, int rows, int cols, uint32_t window, float sigmaD, float sigmalR)
+{
+
+}
 
 int main( int argc, char** argv )
 {
