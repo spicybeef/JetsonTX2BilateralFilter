@@ -54,7 +54,8 @@ int main( int argc, char** argv )
     cv::bilateralFilter(inputImageFloat,outputImageCv,20,50,50);
     // From pointer
     cv::Mat * outputImagePtr;
-    floatPtrToMat(NULL, outputImagePtr, inputImage.rows, inputImage.cols);
+    // floatPtrToMat(NULL, outputImagePtr, inputImage.rows, inputImage.cols);
+    cv::Mat * output = new cv::Mat(rows, cols, CV_32F, cv::Scalar(0.5));
 
     // Original Version
     cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
@@ -64,7 +65,7 @@ int main( int argc, char** argv )
     cv::imshow("Output OpenCV", outputImageCv);
     // Naive Version
     cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Output Naive", *outputImagePtr);
+    cv::imshow("Output Naive", *output);
 
     // Wait for a keystroke in the window
     cv::waitKey(0);
