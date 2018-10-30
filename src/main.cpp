@@ -46,7 +46,7 @@ int main( int argc, char** argv )
     // Create window for display
     cv::namedWindow("Output", cv::WINDOW_AUTOSIZE);
     // Show the image inside of it
-    cv::imshow("Output", outputImage, c);
+    cv::imshow("Output", outputImage);
     // Wait for a keystroke in the window
     cv::waitKey(0);
 
