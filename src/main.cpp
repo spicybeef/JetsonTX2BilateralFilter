@@ -15,9 +15,9 @@ void matToFloatPtr(cv::Mat * inputMat, const float * outputFloat, int rows, int 
 
 void floatPtrToMat(const float * inputFloat, cv::Mat * outputMat, int rows, int cols)
 {
-    cv::Mat output = new cv::Mat(rows, cols, CV_32F, cv::Scalar(0.5));
+    cv::Mat * output = new cv::Mat(rows, cols, CV_32F, cv::Scalar(0.5));
 
-    outputMat = &output;
+    outputMat = output;
 }
 
 void bilateralNaive(const float * input, const float * output, int rows, int cols, uint32_t window, float sigmaD, float sigmalR)
