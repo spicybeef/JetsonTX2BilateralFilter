@@ -16,9 +16,6 @@
 int main( int argc, char** argv )
 {
     cv::String inputImagePath("input.png");
-    cv::Mat inputImage;
-    cv::Mat inputImageFloat;
-    cv::Mat outputImage;
 
     // If we've passed in an image, use that one instead
     if( argc > 1)
@@ -27,7 +24,7 @@ int main( int argc, char** argv )
     }
     
     // Parse in the image
-    inputImage = cv::imread(inputImagePath, cv::IMREAD_GRAYSCALE);
+    cv::Mat inputImage = cv::imread(inputImagePath, cv::IMREAD_GRAYSCALE);
 
     // Check if that worked
     if (inputImage.empty())
@@ -37,16 +34,22 @@ int main( int argc, char** argv )
         return -1;
     }
 
-    // Convert input to float
-    inputImage.convertTo(inputImageFloat, CV_32F, 1.0/255.0);
+    // Convert input to float in the range of 0.0 to 1.0
+    cv::Mat inputImageFloat;
+    inputImage.convertTo(inputImageFloat, CV_32F, 1.0/255.0, 0.0);
 
     // Try running the CV bilateral filter on it
-    cv::bilateralFilter(inputImageFloat,outputImage,20,50,50);
+    cv::Mat outputImageCv;
+    cv::bilateralFilter(inputImageFloat,outputImageCv,20,50,50);
 
-    // Create window for display
-    cv::namedWindow("Output", cv::WINDOW_AUTOSIZE);
-    // Show the image inside of it
-    cv::imshow("Output", outputImage);
+    // Original Version
+    cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Original", inputImage);
+
+    // CV Version
+    cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Output OpenCV", outputImageCv);
+
     // Wait for a keystroke in the window
     cv::waitKey(0);
 
