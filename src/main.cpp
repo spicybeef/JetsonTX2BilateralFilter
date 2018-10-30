@@ -8,16 +8,16 @@
 
 #include "main.h"
 
-void matToFloatPtr(cv::Mat * inputMat, const float * outputFloat, int rows, int cols)
+void matToFloatPtr(cv::Mat ** inputMat, const float ** outputFloat, int rows, int cols)
 {
 
 }
 
-void floatPtrToMat(const float * inputFloat, cv::Mat * outputMat, int rows, int cols)
+void floatPtrToMat(const float ** inputFloat, cv::Mat ** outputMat, int rows, int cols)
 {
     cv::Mat * output = new cv::Mat(rows, cols, CV_32F, cv::Scalar(0.5));
 
-    outputMat = output;
+    (*outputMat) = output;
 }
 
 void bilateralNaive(const float * input, const float * output, int rows, int cols, uint32_t window, float sigmaD, float sigmalR)
@@ -54,8 +54,7 @@ int main( int argc, char** argv )
     cv::bilateralFilter(inputImageFloat,outputImageCv,20,50,50);
     // From pointer
     cv::Mat * outputImagePtr;
-    // floatPtrToMat(NULL, outputImagePtr, inputImage.rows, inputImage.cols);
-    cv::Mat * output = new cv::Mat(rows, cols, CV_32F, cv::Scalar(0.5));
+    floatPtrToMat(NULL, &outputImagePtr, inputImage.rows, inputImage.cols);
 
     // Original Version
     cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
@@ -65,7 +64,7 @@ int main( int argc, char** argv )
     cv::imshow("Output OpenCV", outputImageCv);
     // Naive Version
     cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Output Naive", *output);
+    cv::imshow("Output Naive", *outputImagePtr);
 
     // Wait for a keystroke in the window
     cv::waitKey(0);
