@@ -15,7 +15,7 @@ void matToFloatPtr(cv::Mat * inputMat, const float * outputFloat, int rows, int 
 
 void floatPtrToMat(const float * inputFloat, cv::Mat * outputMat, int rows, int cols)
 {
-    cv::Mat output(rows, cols, CV_32F, Scalar(0.5));
+    cv::Mat output(rows, cols, CV_32F, cv::Scalar(0.5));
 
     outputMat = &output;
 }
@@ -49,18 +49,22 @@ int main( int argc, char** argv )
     // Convert input to float in the range of 0.0 to 1.0
     cv::Mat inputImageFloat;
     inputImage.convertTo(inputImageFloat, CV_32F, 1.0/255.0, 0.0);
-
     // Try running the CV bilateral filter on it
     cv::Mat outputImageCv;
     cv::bilateralFilter(inputImageFloat,outputImageCv,20,50,50);
+    // From pointer
+    cv::Mat * outputImagePtr;
+    floatPtrToMat(nullptr, outputImagePtr, inputImage.rows, inputImage.cols);
 
     // Original Version
     cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
     cv::imshow("Original", inputImage);
-
     // CV Version
     cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output OpenCV", outputImageCv);
+    // Naive Version
+    cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Output Naive", outputImagePtr);
 
     // Wait for a keystroke in the window
     cv::waitKey(0);
