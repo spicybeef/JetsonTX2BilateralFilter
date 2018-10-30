@@ -8,10 +8,10 @@
 
 #include "main.h"
 
-void bilateralNaive(std input, cv::Mat & output, uint32_t window, float sigmaD, float sigmalR)
-{
+// void bilateralNaive(std input, cv::Mat & output, uint32_t window, float sigmaD, float sigmalR)
+// {
 
-}
+// }
 
 int main( int argc, char** argv )
 {
@@ -38,7 +38,7 @@ int main( int argc, char** argv )
     }
 
     // Convert input to float
-    inputImage.covertTo(inputImageFloat, CV_32F, 1, 0);
+    inputImage.convertTo(inputImageFloat, CV_32F, 1.0/255.0);
 
     // Try running the CV bilateral filter on it
     cv::bilateralFilter(inputImageFloat,outputImage,20,50,50);
@@ -46,7 +46,7 @@ int main( int argc, char** argv )
     // Create window for display
     cv::namedWindow("Output", cv::WINDOW_AUTOSIZE);
     // Show the image inside of it
-    cv::imshow("Output", outputImage);
+    cv::imshow("Output", outputImage, c);
     // Wait for a keystroke in the window
     cv::waitKey(0);
 
