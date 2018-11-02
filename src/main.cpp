@@ -8,21 +8,42 @@
 
 #include "main.h"
 
-void matToFloatPtr(cv::Mat ** inputMat, const float ** outputFloat, int rows, int cols)
+void matToFloatPtr(const cv::Mat * inputMat, float ** outputFloat, int rows, int cols)
 {
+    // Instantiate new output float array
+    float * output = (float*)malloc(rows * cols * sizeof(float));
 
+    // Iterate through input mat and copy values into float array
+    for (int row = 0; row < rows; row++)
+    {
+        for (int col = 0; col < cols; col++)
+        {
+            output[col + row * cols] = inputMat->at<float>(row, col);
+        }
+    }
+
+    (*outputFloat) = output;
 }
 
-void floatPtrToMat(const float ** inputFloat, cv::Mat ** outputMat, int rows, int cols)
+void floatPtrToMat(const float * inputFloat, cv::Mat ** outputMat, int rows, int cols)
 {
     cv::Mat * output = new cv::Mat(rows, cols, CV_32F, cv::Scalar(0.5));
+
+    // Iterate through input float and copy values into float Mat
+    for (int row = 0; row < rows; row++)
+    {
+        for (int col = 0; col < cols; col++)
+        {
+            output->at<float>(row, col) = inputFloat[col + row * cols];
+        }
+    }
 
     (*outputMat) = output;
 }
 
 void bilateralNaive(const float * input, const float * output, int rows, int cols, uint32_t window, float sigmaD, float sigmalR)
 {
-
+    
 }
 
 int main( int argc, char** argv )
@@ -52,9 +73,11 @@ int main( int argc, char** argv )
     // Try running the CV bilateral filter on it
     cv::Mat outputImageCv;
     cv::bilateralFilter(inputImageFloat,outputImageCv,20,50,50);
-    // From pointer
+    // Go from mat to pointer then to mat again
+    float * floatIntermediate;
     cv::Mat * outputImagePtr;
-    floatPtrToMat(NULL, &outputImagePtr, inputImage.rows, inputImage.cols);
+    matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
+    floatPtrToMat(floatIntermediate, &outputImagePtr, inputImage.rows, inputImage.cols);
 
     // Original Version
     cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
@@ -63,7 +86,7 @@ int main( int argc, char** argv )
     cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output OpenCV", outputImageCv);
     // Naive Version
-    cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
+    cv::namedWindow("Output Naive", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output Naive", *outputImagePtr);
 
     // Wait for a keystroke in the window
