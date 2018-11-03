@@ -1,6 +1,6 @@
 CFLAGS = `pkg-config --cflags opencv`
 LIBS = `pkg-config --libs opencv`
-# CFLAGS += -O2 -s -DNDEBUG
+CFLAGS += -O3 -s -DNDEBUG
 
 all:
 	#nvcc -I. -arch=sm_52 -c src/bilateral_gpu.cu -o build/bilateral_gpu.o 
