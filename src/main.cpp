@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <iostream>
+#include <chrono>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
@@ -102,6 +103,8 @@ void bilateralNaive(float* inputFloat, float** outputFloat, int rows, int cols, 
     (*outputFloat) = output;
 }
 
+using namespace std::chrono;
+
 int main( int argc, char** argv )
 {
     cv::String inputImagePath("input.png");
@@ -126,16 +129,27 @@ int main( int argc, char** argv )
     // Convert input to float in the range of 0.0 to 1.0
     cv::Mat inputImageFloat;
     inputImage.convertTo(inputImageFloat, CV_32F, 1.0/255.0, 0.0);
+    
     // Try running the CV bilateral filter on it
     cv::Mat outputImageCv;
+    high_resolution_clock::time_point t1Cv = high_resolution_clock::now();
     cv::bilateralFilter(inputImageFloat,outputImageCv, 10, 20, 30);
+    high_resolution_clock::time_point t2Cv = high_resolution_clock::now();
+    auto durationCv = duration_cast<milliseconds>(t2Cv - t1Cv).count();
+
     // Go from mat to pointer, do bilateral, then to go to mat again
     float * floatIntermediate;
     float * floatProcessed;
     cv::Mat * outputImagePtr;
     matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
+    high_resolution_clock::time_point t1Naive = high_resolution_clock::now();
     bilateralNaive(floatIntermediate, &floatProcessed, inputImage.rows, inputImage.cols, 10, 20, 30);
+    high_resolution_clock::time_point t2Naive = high_resolution_clock::now();
+    auto durationNaive = duration_cast<milliseconds>(t2Naive - t1Naive).count();
     floatPtrToMat(floatProcessed, &outputImagePtr, inputImage.rows, inputImage.cols);
+
+    std::cout << "OpenCV bilateral took: " << durationCv << " ms" << std::endl;
+    std::cout << "Naive bilateral took: " << durationNaive << " ms" << std::endl;
 
     // Original Version
     cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
