@@ -9,6 +9,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include "bilateral_cpu.h"
+#include "bilateral_gpu.h"
 
 /**
  * @brief      Converts an OpenCV Mat object to a float array
@@ -94,18 +95,31 @@ int main( int argc, char** argv )
     auto durationCv = duration_cast<milliseconds>(t2Cv - t1Cv).count();
 
     // Go from mat to pointer, do bilateral, then to go to mat again
-    float * floatIntermediate;
-    float * floatProcessed;
-    cv::Mat * outputImagePtr;
+    float* floatIntermediate;
+    float* floatProcessedNaiveCpu = new float [inputImage.rows * inputImage.cols];
+    float* floatProcessedNaiveGpu = new float [inputImage.rows * inputImage.cols];
+    cv::Mat* outputImagePtrNaiveCpu;
+    cv::Mat* outputImagePtrNaiveGpu;
+
+    // Naive CPU
     matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
-    high_resolution_clock::time_point t1Naive = high_resolution_clock::now();
-    bilateralNaive(floatIntermediate, &floatProcessed, inputImage.rows, inputImage.cols, 10, 20, 30);
-    high_resolution_clock::time_point t2Naive = high_resolution_clock::now();
-    auto durationNaive = duration_cast<milliseconds>(t2Naive - t1Naive).count();
-    floatPtrToMat(floatProcessed, &outputImagePtr, inputImage.rows, inputImage.cols);
+    high_resolution_clock::time_point t1NaiveCpu = high_resolution_clock::now();
+    bilateralNaiveCpu(floatIntermediate, floatProcessedNaiveCpu, inputImage.rows, inputImage.cols, 10, 20, 30);
+    high_resolution_clock::time_point t2NaiveCpu = high_resolution_clock::now();
+    auto durationNaiveCpu = duration_cast<milliseconds>(t2NaiveCpu - t1NaiveCpu).count();
+    floatPtrToMat(floatProcessedNaiveCpu, &outputImagePtrNaiveCpu, inputImage.rows, inputImage.cols);
+
+    // Naive GPU
+    matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
+    high_resolution_clock::time_point t1NaiveGpu = high_resolution_clock::now();
+    bilateralNaiveGpu(floatIntermediate, floatProcessedNaiveGpu, inputImage.rows, inputImage.cols, 10, 20, 30);
+    high_resolution_clock::time_point t2NaiveGpu = high_resolution_clock::now();
+    auto durationNaiveGpu = duration_cast<milliseconds>(t2NaiveGpu - t1NaiveGpu).count();
+    floatPtrToMat(floatProcessedNaiveGpu, &outputImagePtrNaiveGpu, inputImage.rows, inputImage.cols);
 
     std::cout << "OpenCV bilateral took: " << durationCv << " ms" << std::endl;
-    std::cout << "Naive bilateral took: " << durationNaive << " ms" << std::endl;
+    std::cout << "Naive CPU bilateral took: " << durationNaiveCpu << " ms" << std::endl;
+    std::cout << "Naive GPU bilateral took: " << durationNaiveGpu << " ms" << std::endl;
 
     // Original Version
     cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
@@ -113,9 +127,12 @@ int main( int argc, char** argv )
     // CV Version
     cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output OpenCV", outputImageCv);
-    // Naive Version
-    cv::namedWindow("Output Naive", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Output Naive", *outputImagePtr);
+    // Naive CPU Version
+    cv::namedWindow("Output Naive CPU", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Output Naive CPU", *outputImagePtrNaiveCpu);
+    // Naive GPU Version
+    cv::namedWindow("Output Naive GPU", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Output Naive GPU", *outputImagePtrNaiveGpu);
 
     // Wait for a keystroke in the window
     cv::waitKey(0);

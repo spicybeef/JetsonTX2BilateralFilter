@@ -12,7 +12,7 @@
  *
  * @return     The distance between the two points
  */
-float distance(int x0, int y0, int x1, int y1)
+inline float distance(int x0, int y0, int x1, int y1)
 {
     return static_cast<float>(sqrt( (x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1) ));
 }
@@ -28,7 +28,7 @@ float distance(int x0, int y0, int x1, int y1)
  * @return     The value of the 1D Gaussian function at point x with mean mu and
  *             standard deviation sigma
  */
-float gaussian(float x, float mu, float sigma)
+inline float gaussian(float x, float mu, float sigma)
 {
     return static_cast<float>(exp(-((x - mu) * (x - mu))/(2 * sigma * sigma)) / (2 * M_PI * sigma * sigma));
 }
@@ -39,21 +39,17 @@ float gaussian(float x, float mu, float sigma)
  * @param      inputFloat   The input float array
  * @param      outputFloat  The output float array
  * @param[in]  rows         The number of rows in the image
- * @param[in]  cols         The number of columsn in the image
+ * @param[in]  cols         The number of columns in the image
  * @param[in]  window       The window to use in the filter
  * @param[in]  sigmaD       The distance parameter
  * @param[in]  sigmaR       The intensity parameter
  */
-void bilateralNaive(float* inputFloat, float** outputFloat, int rows, int cols, uint32_t window, float sigmaD, float sigmaR)
+void bilateralNaiveCpu(float* inputFloat, float* outputFloat, int rows, int cols, uint32_t window, float sigmaD, float sigmaR)
 {
     float filteredPixel;
     float wP, gR, gD;
     int neighborCol;
     int neighborRow;
-
-    // Instantiate new output float array
-    float* output;
-    output = new float [rows * cols];
 
     for (int col = 0; col < cols; col++)
     {
@@ -66,8 +62,8 @@ void bilateralNaive(float* inputFloat, float** outputFloat, int rows, int cols, 
             {
                 for (int windowRow = 0; windowRow < window; windowRow++)
                 {
-                    neighborCol = col - (window / 2) - windowCol, 0;
-                    neighborRow = row - (window / 2) - windowRow, 0;
+                    neighborCol = col - (window / 2) - windowCol;
+                    neighborRow = row - (window / 2) - windowRow;
 
                     // Prevent us indexing into regions that don't exist
                     if (neighborCol < 0)
@@ -89,9 +85,7 @@ void bilateralNaive(float* inputFloat, float** outputFloat, int rows, int cols, 
                     wP += (gR * gD);
                 }
             }
-            output[col + row * cols] = filteredPixel / wP;
+            outputFloat[col + row * cols] = filteredPixel / wP;
         }
     }
-
-    (*outputFloat) = output;
 }
