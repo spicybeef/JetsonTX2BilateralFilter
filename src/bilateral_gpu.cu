@@ -3,7 +3,7 @@
 #include "helper_cuda.h"
 #include "bilateral_gpu.h"
 
-const int BLOCKDIM = 32;
+const int BLOCKDIM = 16;
 
 /**
  * @brief      Calculates the Euclidean distance between two points (x0, y0) and
@@ -98,23 +98,26 @@ void bilateralNaiveGpu(
     float* gpuOutput;
     cudaError_t cudaStatus; 
     
-    cudaStatus = cudaMalloc<float>(&gpuInput, rows * cols);
+    cudaStatus = cudaMalloc<float>(&gpuInput, rows * cols * sizeof(float));
     checkCudaErrors(cudaStatus);    
-    cudaStatus = cudaMalloc<float>(&gpuOutput, rows * cols);
+    cudaStatus = cudaMalloc<float>(&gpuOutput, rows * cols * sizeof(float));
     checkCudaErrors(cudaStatus);
 
-    cudaStatus = cudaMemcpy(gpuInput, inputImage, rows * cols, cudaMemcpyHostToDevice);
+    cudaStatus = cudaMemcpy(gpuInput, inputImage, rows * cols * sizeof(float), cudaMemcpyHostToDevice);
     checkCudaErrors(cudaStatus);    
     
     const dim3 block(BLOCKDIM, BLOCKDIM);
     const dim3 grid(cols / BLOCKDIM, rows / BLOCKDIM);
+
+    printf("BlockDimensions x=%d, y=%d, z=%d\n", block.x, block.y, block.z);
+    printf("GridDimensions x=%d, y=%d, z=%d\n", grid.x, grid.y, grid.z);
 
     bilateralGpuKernel<<<grid,block>>>(gpuInput, gpuOutput, rows, cols, window, sigmaD, sigmaR);
 
     cudaStatus = cudaDeviceSynchronize();
     checkCudaErrors(cudaStatus);    
 
-    cudaStatus = cudaMemcpy(outputImage, gpuOutput, rows * cols,cudaMemcpyDeviceToHost);
+    cudaStatus = cudaMemcpy(outputImage, gpuOutput, rows * cols * sizeof(float), cudaMemcpyDeviceToHost);
     checkCudaErrors(cudaStatus);    
 
     cudaStatus = cudaFree(gpuInput);
