@@ -11,6 +11,8 @@
 #include "bilateral_cpu.h"
 #include "bilateral_gpu.h"
 
+// #define SHOW_OUTPUT
+
 /**
  * @brief      Converts an OpenCV Mat object to a float array
  *
@@ -93,16 +95,25 @@ int main( int argc, char** argv )
         return -1;
     }
 
+    std::cout << "sizeof(float) = " << sizeof(float) << std::endl;
+    std::cout << "Image size is " << inputImage.cols << " x " << inputImage.rows << std::endl;
+    std::cout << "Total processed size for grayscale image is: " << inputImage.cols * inputImage.rows * sizeof(float) << " bytes" << std::endl;
+
     // Convert input to float in the range of 0.0 to 1.0
     cv::Mat inputImageFloat;
     inputImage.convertTo(inputImageFloat, CV_32F, 1.0/255.0, 0.0);
     
+    // Original Version
+    cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Original", inputImage);
+
     // Try running the CV bilateral filter on it
     cv::Mat outputImageCv;
     high_resolution_clock::time_point t1Cv = high_resolution_clock::now();
     cv::bilateralFilter(inputImageFloat,outputImageCv, windowSize, sigmaD, sigmaR);
     high_resolution_clock::time_point t2Cv = high_resolution_clock::now();
     auto durationCv = duration_cast<milliseconds>(t2Cv - t1Cv).count();
+    std::cout << "OpenCV bilateral took: " << durationCv << " ms" << std::endl;
 
     // Go from mat to pointer, do bilateral, then to go to mat again
     float* floatIntermediate;
@@ -112,12 +123,13 @@ int main( int argc, char** argv )
     cv::Mat* outputImagePtrNaiveGpu;
 
     // Naive CPU
-    // matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
-    // high_resolution_clock::time_point t1NaiveCpu = high_resolution_clock::now();
-    // bilateralNaiveCpu(floatIntermediate, floatProcessedNaiveCpu, inputImage.rows, inputImage.cols, windowSize, sigmaD, sigmaR);
-    // high_resolution_clock::time_point t2NaiveCpu = high_resolution_clock::now();
-    // auto durationNaiveCpu = duration_cast<milliseconds>(t2NaiveCpu - t1NaiveCpu).count();
-    // floatPtrToMat(floatProcessedNaiveCpu, &outputImagePtrNaiveCpu, inputImage.rows, inputImage.cols);
+    matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
+    high_resolution_clock::time_point t1NaiveCpu = high_resolution_clock::now();
+    bilateralNaiveCpu(floatIntermediate, floatProcessedNaiveCpu, inputImage.rows, inputImage.cols, windowSize, sigmaD, sigmaR);
+    high_resolution_clock::time_point t2NaiveCpu = high_resolution_clock::now();
+    auto durationNaiveCpu = duration_cast<milliseconds>(t2NaiveCpu - t1NaiveCpu).count();
+    floatPtrToMat(floatProcessedNaiveCpu, &outputImagePtrNaiveCpu, inputImage.rows, inputImage.cols);
+    std::cout << "Naive CPU bilateral took: " << durationNaiveCpu << " ms" << std::endl;
 
     // Naive GPU
     matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
@@ -126,26 +138,21 @@ int main( int argc, char** argv )
     high_resolution_clock::time_point t2NaiveGpu = high_resolution_clock::now();
     auto durationNaiveGpu = duration_cast<milliseconds>(t2NaiveGpu - t1NaiveGpu).count();
     floatPtrToMat(floatProcessedNaiveGpu, &outputImagePtrNaiveGpu, inputImage.rows, inputImage.cols);
-
-    std::cout << "OpenCV bilateral took: " << durationCv << " ms" << std::endl;
-    // std::cout << "Naive CPU bilateral took: " << durationNaiveCpu << " ms" << std::endl;
     std::cout << "Naive GPU bilateral took: " << durationNaiveGpu << " ms" << std::endl;
 
-    // Original Version
-    cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Original", inputImage);
+#if defined(SHOW_OUTPUT)
     // CV Version
     cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output OpenCV", outputImageCv);
-    // // Naive CPU Version
-    // cv::namedWindow("Output Naive CPU", cv::WINDOW_AUTOSIZE);
-    // cv::imshow("Output Naive CPU", *outputImagePtrNaiveCpu);
+    // Naive CPU Version
+    cv::namedWindow("Output Naive CPU", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Output Naive CPU", *outputImagePtrNaiveCpu);
     // Naive GPU Version
     cv::namedWindow("Output Naive GPU", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output Naive GPU", *outputImagePtrNaiveGpu);
-
     // Wait for a keystroke in the window
     cv::waitKey(0);
+#endif // defined(SHOW_OUTPUT)
 
     return 0;
 }

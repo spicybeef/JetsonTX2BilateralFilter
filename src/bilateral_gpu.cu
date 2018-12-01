@@ -37,6 +37,17 @@ __device__ float gaussian(float x, float mu, float sigma)
     return static_cast<float>(exp(-((x - mu) * (x - mu))/(2 * sigma * sigma)) / (2 * M_PI * sigma * sigma));
 }
 
+/**
+ * @brief      A naive implementation of the bilateral filter
+ *
+ * @param      inputImage   The input float array
+ * @param      outputImage  The output float array
+ * @param[in]  rows         The number of rows in the image
+ * @param[in]  cols         The number of columns in the image
+ * @param[in]  window       The window to use in the filter
+ * @param[in]  sigmaD       The distance parameter
+ * @param[in]  sigmaR       The intensity parameter
+ */
 __global__ void bilateralGpuKernel(
     float* inputImage,
     float* outputImage,
@@ -52,6 +63,11 @@ __global__ void bilateralGpuKernel(
 
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (col >= cols || row >= rows)
+    {
+        return;
+    }
 
     filteredPixel = 0;
     wP = 0;
@@ -107,10 +123,10 @@ void bilateralNaiveGpu(
     checkCudaErrors(cudaStatus);    
     
     const dim3 block(BLOCKDIM, BLOCKDIM);
-    const dim3 grid(cols / BLOCKDIM, rows / BLOCKDIM);
+    const dim3 grid((cols / BLOCKDIM) + (cols % BLOCKDIM), (rows / BLOCKDIM) + (rows % BLOCKDIM));
 
-    printf("BlockDimensions x=%d, y=%d, z=%d\n", block.x, block.y, block.z);
-    printf("GridDimensions x=%d, y=%d, z=%d\n", grid.x, grid.y, grid.z);
+    // printf("BlockDimensions x=%d, y=%d, z=%d\n", block.x, block.y, block.z);
+    // printf("GridDimensions x=%d, y=%d, z=%d\n", grid.x, grid.y, grid.z);
 
     bilateralGpuKernel<<<grid,block>>>(gpuInput, gpuOutput, rows, cols, window, sigmaD, sigmaR);
 
