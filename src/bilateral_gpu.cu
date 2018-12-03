@@ -16,7 +16,7 @@ const int BLOCKDIM = 16;
  *
  * @return     The distance between the two points
  */
-__device__ float distance(int x0, int y0, int x1, int y1)
+__device__ inline float distance(int x0, int y0, int x1, int y1)
 {
     return static_cast<float>(sqrtf( (x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1) ));
 }
@@ -32,9 +32,9 @@ __device__ float distance(int x0, int y0, int x1, int y1)
  * @return     The value of the 1D Gaussian function at point x with mean mu and
  *             standard deviation sigma
  */
-__device__ float gaussian(float x, float mu, float sigma)
+__device__ inline float gaussian(float x, float mu, float sigma)
 {
-    return static_cast<float>(exp(-((x - mu) * (x - mu))/(2 * sigma * sigma)) / (2 * M_PI * sigma * sigma));
+    return static_cast<float>(expf(-((x - mu) * (x - mu))/(2 * sigma * sigma)) / (2 * M_PI * sigma * sigma));
 }
 
 /**
@@ -56,10 +56,10 @@ __global__ void bilateralGpuKernel(
     float sigmaD,
     float sigmaR)
 {
-    float filteredPixel;
+    float filteredPixel, neighbourPixel, currentPixel;
     float wP, gR, gD;
-    int neighborCol;
-    int neighborRow;
+    int neighbourCol;
+    int neighbourRow;
 
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -76,25 +76,28 @@ __global__ void bilateralGpuKernel(
     {
         for (int windowRow = 0; windowRow < window; windowRow++)
         {
-            neighborCol = col - (window / 2) - windowCol;
-            neighborRow = row - (window / 2) - windowRow;
+            neighbourCol = col - (window / 2) - windowCol;
+            neighbourRow = row - (window / 2) - windowRow;
 
             // Prevent us indexing into regions that don't exist
-            if (neighborCol < 0)
+            if (neighbourCol < 0)
             {
-                neighborCol = 0;
+                neighbourCol = 0;
             }
-            if (neighborRow < 0)
+            if (neighbourRow < 0)
             {
-                neighborRow = 0;
+                neighbourRow = 0;
             }
+
+            neighbourPixel = inputImage[neighbourCol + neighbourRow * cols];
+            currentPixel = inputImage[col + row * cols];
 
             // Intensity factor
-            gR = gaussian(inputImage[neighborCol + neighborRow * cols] - inputImage[col + row * cols], 0.0, sigmaR);
+            gR = gaussian(neighbourPixel - currentPixel, 0.0, sigmaR);
             // Distance factor
-            gD = gaussian(distance(col, row, neighborCol, neighborRow), 0.0, sigmaD);
+            gD = gaussian(distance(col, row, neighbourCol, neighbourRow), 0.0, sigmaD);
 
-            filteredPixel += inputImage[neighborCol + neighborRow * cols] * (gR * gD);
+            filteredPixel += neighbourPixel * (gR * gD);
 
             wP += (gR * gD);
         }

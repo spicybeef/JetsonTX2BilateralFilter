@@ -1,10 +1,12 @@
 CFLAGS = `pkg-config --cflags opencv`
 LIBS = `pkg-config --libs opencv`
-CFLAGS += -O3 -s -DNDEBUG -std=c++11
+CFLAGS += -O3 -s -std=c++11
 
 all:
-	nvcc -Xptxas -O3,-v -I. -arch=sm_52 -c src/bilateral_gpu.cu -o bilateral_gpu.o
-	g++ -o bilateral_filter src/main.cpp src/bilateral_cpu.cpp bilateral_gpu.o $(CFLAGS) $(LIBS) -L/usr/local/cuda/lib64 -lcudart -I/usr/include/ -Xlinker -Map=bilateral_filter.map 
+	nvcc -I. -arch=sm_52 -c src/bilateral_gpu.cu -o bilateral_gpu.o
+	nvcc --source-in-ptx -ptx -G -I. -arch=sm_52 -c src/bilateral_gpu.cu
+	g++ -o bilateral_filter src/main.cpp src/bilateral_cpu.cpp bilateral_gpu.o $(CFLAGS) $(LIBS) -L/usr/local/cuda/lib64 -lcudart -I/usr/include/
+	g++ -c -g -O src/main.cpp src/bilateral_cpu.cpp $(CFLAGS) $(LIBS) -L/usr/local/cuda/lib64 -lcudart -I/usr/include/ -Wa,-aslh > bilateral_filter.list
 
 clean: 
 	@rm -rf *.o build/

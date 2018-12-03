@@ -11,7 +11,7 @@
 #include "bilateral_cpu.h"
 #include "bilateral_gpu.h"
 
-// #define SHOW_OUTPUT
+#define SHOW_OUTPUT
 
 /**
  * @brief      Converts an OpenCV Mat object to a float array
@@ -67,16 +67,12 @@ using namespace std::chrono;
 int main( int argc, char** argv )
 {
     cv::String inputImagePath("input.png");
-    int windowSize = 20;
+    int windowSize = 10;
     int sigmaD = 20;
-    int sigmaR = 20;
+    int sigmaR = 5;
 
     // If we've passed in an image, use that one instead
     if (argc > 1)
-    {
-        inputImagePath = argv[1];
-    }
-    else if (argc > 2)
     {
         inputImagePath = argv[1];
         windowSize = std::stoi(argv[2]);
@@ -98,6 +94,9 @@ int main( int argc, char** argv )
     std::cout << "sizeof(float) = " << sizeof(float) << std::endl;
     std::cout << "Image size is " << inputImage.cols << " x " << inputImage.rows << std::endl;
     std::cout << "Total processed size for grayscale image is: " << inputImage.cols * inputImage.rows * sizeof(float) << " bytes" << std::endl;
+    std::cout << "Using window size of: " << windowSize << std::endl;
+    std::cout << "Using sigmaD size of: " << sigmaD << std::endl;
+    std::cout << "Using sigmaR size of: " << sigmaR << std::endl;
 
     // Convert input to float in the range of 0.0 to 1.0
     cv::Mat inputImageFloat;
@@ -150,9 +149,18 @@ int main( int argc, char** argv )
     // Naive GPU Version
     cv::namedWindow("Output Naive GPU", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output Naive GPU", *outputImagePtrNaiveGpu);
-    // Wait for a keystroke in the window
-    cv::waitKey(0);
 #endif // defined(SHOW_OUTPUT)
+
+    // Wait for escape
+    while(1)
+    {
+        int k = cv::waitKey(33);
+
+        if (k == 27)
+        {
+            break;
+        }
+    }
 
     return 0;
 }

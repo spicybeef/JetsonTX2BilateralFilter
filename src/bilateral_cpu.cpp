@@ -1,5 +1,6 @@
 #include <stdint.h>
-#include <cmath>
+#include <stdio.h>
+#include <math.h>
 
 /**
  * @brief      Calculates the Euclidean distance between two points (x0, y0) and
@@ -46,10 +47,10 @@ inline float gaussian(float x, float mu, float sigma)
  */
 void bilateralNaiveCpu(float* inputFloat, float* outputFloat, int rows, int cols, uint32_t window, float sigmaD, float sigmaR)
 {
-    float filteredPixel;
+    float filteredPixel, neighbourPixel, currentPixel;
     float wP, gR, gD;
-    int neighborCol;
-    int neighborRow;
+    int neighbourCol;
+    int neighbourRow;
 
     for (int col = 0; col < cols; col++)
     {
@@ -62,25 +63,28 @@ void bilateralNaiveCpu(float* inputFloat, float* outputFloat, int rows, int cols
             {
                 for (int windowRow = 0; windowRow < window; windowRow++)
                 {
-                    neighborCol = col - (window / 2) - windowCol;
-                    neighborRow = row - (window / 2) - windowRow;
+                    neighbourCol = col - (window / 2) - windowCol;
+                    neighbourRow = row - (window / 2) - windowRow;
 
                     // Prevent us indexing into regions that don't exist
-                    if (neighborCol < 0)
+                    if (neighbourCol < 0)
                     {
-                        neighborCol = 0;
+                        neighbourCol = 0;
                     }
-                    if (neighborRow < 0)
+                    if (neighbourRow < 0)
                     {
-                        neighborRow = 0;
+                        neighbourRow = 0;
                     }
+
+                    neighbourPixel = inputFloat[neighbourCol + neighbourRow * cols];
+                    currentPixel = inputFloat[col + row * cols];
 
                     // Intensity factor
-                    gR = gaussian(inputFloat[neighborCol + neighborRow * cols] - inputFloat[col + row * cols], 0.0, sigmaR);
+                    gR = gaussian(neighbourPixel - currentPixel, 0.0, sigmaR);
                     // Distance factor
-                    gD = gaussian(distance(col, row, neighborCol, neighborRow), 0.0, sigmaD);
+                    gD = gaussian(distance(col, row, neighbourCol, neighbourRow), 0.0, sigmaD);
 
-                    filteredPixel += inputFloat[neighborCol + neighborRow * cols] * (gR * gD);
+                    filteredPixel += neighbourPixel * (gR * gD);
 
                     wP += (gR * gD);
                 }
