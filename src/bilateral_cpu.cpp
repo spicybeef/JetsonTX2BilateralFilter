@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include <math.h>
 
+extern "C"
+{
+    float expf_michel (float x);
+}
+
 /**
  * @brief      Calculates the Euclidean distance between two points (x0, y0) and
  *             (x1, y1)
@@ -13,9 +18,9 @@
  *
  * @return     The distance between the two points
  */
-inline float distance(int x0, int y0, int x1, int y1)
+float distance(int x0, int y0, int x1, int y1)
 {
-    return static_cast<float>(sqrt( (x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1) ));
+    return static_cast<float>(sqrtf( (x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1) ));
 }
 
 /**
@@ -29,9 +34,9 @@ inline float distance(int x0, int y0, int x1, int y1)
  * @return     The value of the 1D Gaussian function at point x with mean mu and
  *             standard deviation sigma
  */
-inline float gaussian(float x, float mu, float sigma)
+float gaussian(float x, float mu, float sigma)
 {
-    return static_cast<float>(exp(-((x - mu) * (x - mu))/(2 * sigma * sigma)) / (2 * M_PI * sigma * sigma));
+    return static_cast<float>(expf_michel(-((x - mu) * (x - mu))/(2 * sigma * sigma)) / (2 * M_PI * sigma * sigma));
 }
 
 /**
@@ -91,5 +96,52 @@ void bilateralNaiveCpu(float* inputFloat, float* outputFloat, int rows, int cols
             }
             outputFloat[col + row * cols] = filteredPixel / wP;
         }
+    }
+}
+
+void bilateralOptimizedCpu(float* inputFloat, float* outputFloat, int rows, int cols, uint32_t window, float sigmaD, float sigmaR)
+{
+    int totalPixels = rows * cols;
+
+    // #pragma omp parallel num_threads(4)
+    // #pragma omp for
+    #pragma omp parallel for
+    for (int pixel = 0; pixel < totalPixels; pixel++)
+    {
+        float filteredPixel = 0;
+        float wP = 0;
+        int row = pixel / cols;
+        int col = pixel % cols;
+        for (int windowCol = 0; windowCol < window; windowCol++)
+        {
+            for (int windowRow = 0; windowRow < window; windowRow++)
+            {
+                int neighbourCol = col - (window / 2) - windowCol;
+                int neighbourRow = row - (window / 2) - windowRow;
+
+                // Prevent us indexing into regions that don't exist
+                if (neighbourCol < 0)
+                {
+                    neighbourCol = 0;
+                }
+                if (neighbourRow < 0)
+                {
+                    neighbourRow = 0;
+                }
+                
+                float neighbourPixel = inputFloat[neighbourCol + neighbourRow * cols];
+                float currentPixel = inputFloat[col + row * cols];
+
+                // Intensity factor
+                float gR = gaussian(neighbourPixel - currentPixel, 0.0, sigmaR);
+                // Distance factor
+                float gD = gaussian(distance(col, row, neighbourCol, neighbourRow), 0.0, sigmaD);
+
+                filteredPixel += neighbourPixel * (gR * gD);
+
+                wP += (gR * gD);
+            }
+        }
+        outputFloat[col + row * cols] = filteredPixel / wP;
     }
 }
