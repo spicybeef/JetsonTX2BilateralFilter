@@ -110,10 +110,6 @@ int main( int argc, char** argv )
     // Convert input to float in the range of 0.0 to 1.0
     cv::Mat inputImageFloat;
     inputImage.convertTo(inputImageFloat, CV_32F, 1.0/255.0, 0.0);
-    
-    // Original Version
-    cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Original", inputImage);
 
     // Try running the CV bilateral filter on it
     cv::Mat outputImageCv;
@@ -170,6 +166,9 @@ int main( int argc, char** argv )
     std::cout << "Optimized GPU bilateral took: " << durationOptimizedGpu << " ms" << std::endl;
 
 #if defined(SHOW_OUTPUT)
+    // Original Version
+    cv::namedWindow("Original", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Original", inputImage);
     // CV Version
     cv::namedWindow("Output OpenCV", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output OpenCV", outputImageCv);
@@ -185,7 +184,6 @@ int main( int argc, char** argv )
     // Optimized GPU Version
     cv::namedWindow("Output Optimized GPU", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output Optimized GPU", *outputImagePtrOptimizedGpu);
-#endif // defined(SHOW_OUTPUT)
 
     // Wait for escape
     while(1)
@@ -197,6 +195,7 @@ int main( int argc, char** argv )
             break;
         }
     }
+#endif // defined(SHOW_OUTPUT)
 
     return 0;
 }
