@@ -48,7 +48,7 @@ __device__ inline float gaussian(float x, float mu, float sigma)
  * @param[in]  sigmaD       The distance parameter
  * @param[in]  sigmaR       The intensity parameter
  */
-__global__ void bilateralGpuKernel(
+__global__ void bilateralNaiveGpuKernel(
     float* inputImage,
     float* outputImage,
     int rows, int cols,
@@ -105,6 +105,105 @@ __global__ void bilateralGpuKernel(
     outputImage[col + row * cols] = filteredPixel / wP;
 }
 
+__global__ void bilateralOptimizedGpuColsKernel(
+    float* inputImage,
+    float* outputImage,
+    int rows, int cols,
+    uint32_t window,
+    float sigmaD,
+    float sigmaR)
+{
+    float filteredPixel, neighbourPixel, currentPixel;
+    float wP, gR, gD;
+    int neighbourCol;
+
+    const int col = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (col >= cols || row >= rows)
+    {
+        return;
+    }
+
+    filteredPixel = 0;
+    wP = 0;
+
+    #pragma unroll
+    for (int windowCol = 0; windowCol < window; windowCol++)
+    {
+        neighbourCol = col - (window / 2) - windowCol;
+
+        // Prevent us indexing into regions that don't exist
+        if (neighbourCol < 0)
+        {
+            neighbourCol = 0;
+        }
+
+        neighbourPixel = inputImage[neighbourCol + row * cols];
+        currentPixel = inputImage[col + row * cols];
+
+        // Intensity factor
+        gR = gaussian(neighbourPixel - currentPixel, 0.0, sigmaR);
+        // Distance factor
+        gD = gaussian(distance(col, row, neighbourCol, row), 0.0, sigmaD);
+
+        filteredPixel += neighbourPixel * (gR * gD);
+
+        wP += (gR * gD);
+    }
+    outputImage[col + row * cols] = filteredPixel / wP;
+}
+
+__global__ void bilateralOptimizedGpuRowsKernel(
+    float* inputImage,
+    float* outputImage,
+    int rows, int cols,
+    uint32_t window,
+    float sigmaD,
+    float sigmaR)
+{
+    float filteredPixel, neighbourPixel, currentPixel;
+    float wP, gR, gD;
+    int neighbourRow;
+
+    const int col = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (col >= cols || row >= rows)
+    {
+        return;
+    }
+
+    filteredPixel = 0;
+    wP = 0;
+
+    #pragma unroll
+    for (int windowRow = 0; windowRow < window; windowRow++)
+    {
+        neighbourRow = row - (window / 2) - windowRow;
+
+        // Prevent us indexing into regions that don't exist
+        if (neighbourRow < 0)
+        {
+            neighbourRow = 0;
+        }
+
+        neighbourPixel = inputImage[col + neighbourRow * cols];
+        currentPixel = inputImage[col + row * cols];
+
+        // Intensity factor
+        gR = gaussian(neighbourPixel - currentPixel, 0.0, sigmaR);
+        // Distance factor
+        gD = gaussian(distance(col, row, col, neighbourRow), 0.0, sigmaD);
+
+        filteredPixel += neighbourPixel * (gR * gD);
+
+        wP += (gR * gD);
+    }
+
+    outputImage[col + row * cols] = filteredPixel / wP;
+}
+
 void bilateralNaiveGpu(
     float* inputImage,
     float* outputImage,
@@ -131,7 +230,7 @@ void bilateralNaiveGpu(
     // printf("BlockDimensions x=%d, y=%d, z=%d\n", block.x, block.y, block.z);
     // printf("GridDimensions x=%d, y=%d, z=%d\n", grid.x, grid.y, grid.z);
 
-    bilateralGpuKernel<<<grid,block>>>(gpuInput, gpuOutput, rows, cols, window, sigmaD, sigmaR);
+    bilateralNaiveGpuKernel<<<grid,block>>>(gpuInput, gpuOutput, rows, cols, window, sigmaD, sigmaR);
 
     cudaStatus = cudaDeviceSynchronize();
     checkCudaErrors(cudaStatus);    
@@ -140,6 +239,49 @@ void bilateralNaiveGpu(
     checkCudaErrors(cudaStatus);    
 
     cudaStatus = cudaFree(gpuInput);
+    checkCudaErrors(cudaStatus);    
+    cudaStatus = cudaFree(gpuOutput);
+    checkCudaErrors(cudaStatus);    
+}
+
+void bilateralOptimizedGpu(
+    float* inputImage,
+    float* outputImage,
+    int rows, int cols,
+    uint32_t window,
+    float sigmaD,
+    float sigmaR)
+{
+    float* gpuInput;
+    float* gpuBuffer;
+    float* gpuOutput;
+    cudaError_t cudaStatus; 
+    
+    cudaStatus = cudaMalloc<float>(&gpuInput, rows * cols * sizeof(float));
+    checkCudaErrors(cudaStatus);    
+    cudaStatus = cudaMalloc<float>(&gpuBuffer, rows * cols * sizeof(float));
+    checkCudaErrors(cudaStatus);
+    cudaStatus = cudaMalloc<float>(&gpuOutput, rows * cols * sizeof(float));
+    checkCudaErrors(cudaStatus);
+
+    cudaStatus = cudaMemcpy(gpuInput, inputImage, rows * cols * sizeof(float), cudaMemcpyHostToDevice);
+    checkCudaErrors(cudaStatus);    
+    
+    const dim3 block(BLOCKDIM, BLOCKDIM);
+    const dim3 grid((cols / BLOCKDIM) + (cols % BLOCKDIM), (rows / BLOCKDIM) + (rows % BLOCKDIM));
+
+    bilateralOptimizedGpuColsKernel<<<grid,block>>>(gpuInput, gpuBuffer, rows, cols, window, sigmaD, sigmaR);
+    bilateralOptimizedGpuRowsKernel<<<grid,block>>>(gpuBuffer, gpuOutput, rows, cols, window, sigmaD, sigmaR);
+
+    cudaStatus = cudaDeviceSynchronize();
+    checkCudaErrors(cudaStatus);    
+
+    cudaStatus = cudaMemcpy(outputImage, gpuOutput, rows * cols * sizeof(float), cudaMemcpyDeviceToHost);
+    checkCudaErrors(cudaStatus);    
+
+    cudaStatus = cudaFree(gpuInput);
+    checkCudaErrors(cudaStatus);
+    cudaStatus = cudaFree(gpuBuffer);
     checkCudaErrors(cudaStatus);    
     cudaStatus = cudaFree(gpuOutput);
     checkCudaErrors(cudaStatus);    

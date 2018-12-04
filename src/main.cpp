@@ -209,12 +209,16 @@ int main( int argc, char** argv )
     float* floatProcessedNaiveCpu = new float [inputImage.rows * inputImage.cols];
     float* floatProcessedNaiveGpu = new float [inputImage.rows * inputImage.cols];
     float* floatProcessedOptimizedCpu = new float [inputImage.rows * inputImage.cols];
+    float* floatProcessedOptimizedGpu = new float [inputImage.rows * inputImage.cols];
     cv::Mat* outputImagePtrNaiveCpu;
     cv::Mat* outputImagePtrNaiveGpu;
     cv::Mat* outputImagePtrOptimizedCpu;
+    cv::Mat* outputImagePtrOptimizedGpu;
+
+    // Intermediate float array
+    matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
 
     // Naive CPU
-    matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
     high_resolution_clock::time_point t1NaiveCpu = high_resolution_clock::now();
     bilateralNaiveCpu(floatIntermediate, floatProcessedNaiveCpu, inputImage.rows, inputImage.cols, windowSize, sigmaD, sigmaR);
     high_resolution_clock::time_point t2NaiveCpu = high_resolution_clock::now();
@@ -223,7 +227,6 @@ int main( int argc, char** argv )
     std::cout << "Naive CPU bilateral took: " << durationNaiveCpu << " ms" << std::endl;
 
     // Naive GPU
-    matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
     high_resolution_clock::time_point t1NaiveGpu = high_resolution_clock::now();
     bilateralNaiveGpu(floatIntermediate, floatProcessedNaiveGpu, inputImage.rows, inputImage.cols, windowSize, sigmaD, sigmaR);
     high_resolution_clock::time_point t2NaiveGpu = high_resolution_clock::now();
@@ -232,13 +235,20 @@ int main( int argc, char** argv )
     std::cout << "Naive GPU bilateral took: " << durationNaiveGpu << " ms" << std::endl;
 
     // Optimized CPU
-    matToFloatPtr(&inputImageFloat, &floatIntermediate, inputImage.rows, inputImage.cols);
     high_resolution_clock::time_point t1OptimizedCpu = high_resolution_clock::now();
     bilateralOptimizedCpu(floatIntermediate, floatProcessedOptimizedCpu, inputImage.rows, inputImage.cols, windowSize, sigmaD, sigmaR);
     high_resolution_clock::time_point t2OptimizedCpu = high_resolution_clock::now();
     auto durationOptimizedCpu = duration_cast<milliseconds>(t2OptimizedCpu - t1OptimizedCpu).count();
     floatPtrToMat(floatProcessedOptimizedCpu, &outputImagePtrOptimizedCpu, inputImage.rows, inputImage.cols);
     std::cout << "Optimized CPU bilateral took: " << durationOptimizedCpu << " ms" << std::endl;
+
+    // Optimized GPU
+    high_resolution_clock::time_point t1OptimizedGpu = high_resolution_clock::now();
+    bilateralOptimizedGpu(floatIntermediate, floatProcessedOptimizedGpu, inputImage.rows, inputImage.cols, windowSize, sigmaD, sigmaR);
+    high_resolution_clock::time_point t2OptimizedGpu = high_resolution_clock::now();
+    auto durationOptimizedGpu = duration_cast<milliseconds>(t2OptimizedGpu - t1OptimizedGpu).count();
+    floatPtrToMat(floatProcessedOptimizedGpu, &outputImagePtrOptimizedGpu, inputImage.rows, inputImage.cols);
+    std::cout << "Optimized GPU bilateral took: " << durationOptimizedGpu << " ms" << std::endl;
 
 #if defined(SHOW_OUTPUT)
     // CV Version
@@ -253,6 +263,9 @@ int main( int argc, char** argv )
     // Optimized CPU Version
     cv::namedWindow("Output Optimized CPU", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output Optimized CPU", *outputImagePtrOptimizedCpu);
+    // Optimized GPU Version
+    cv::namedWindow("Output Optimized GPU", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Output Optimized GPU", *outputImagePtrOptimizedGpu);
 #endif // defined(SHOW_OUTPUT)
 
     // Wait for escape
