@@ -105,6 +105,17 @@ __global__ void bilateralNaiveGpuKernel(
     outputImage[col + row * cols] = filteredPixel / wP;
 }
 
+/**
+ * @brief      An optimized implementation of the bilateral filter for columns
+ *
+ * @param      inputImage   The input float array
+ * @param      outputImage  The output float array
+ * @param[in]  rows         The number of rows in the image
+ * @param[in]  cols         The number of columns in the image
+ * @param[in]  window       The window to use in the filter
+ * @param[in]  sigmaD       The distance parameter
+ * @param[in]  sigmaR       The intensity parameter
+ */
 __global__ void bilateralOptimizedGpuColsKernel(
     float* inputImage,
     float* outputImage,
@@ -154,6 +165,17 @@ __global__ void bilateralOptimizedGpuColsKernel(
     outputImage[col + row * cols] = filteredPixel / wP;
 }
 
+/**
+ * @brief      An optimized implementation of the bilateral filter for rows
+ *
+ * @param      inputImage   The input float array
+ * @param      outputImage  The output float array
+ * @param[in]  rows         The number of rows in the image
+ * @param[in]  cols         The number of columns in the image
+ * @param[in]  window       The window to use in the filter
+ * @param[in]  sigmaD       The distance parameter
+ * @param[in]  sigmaR       The intensity parameter
+ */
 __global__ void bilateralOptimizedGpuRowsKernel(
     float* inputImage,
     float* outputImage,
@@ -204,6 +226,17 @@ __global__ void bilateralOptimizedGpuRowsKernel(
     outputImage[col + row * cols] = filteredPixel / wP;
 }
 
+/**
+ * @brief      Wrapper function for naive CUDA kernel
+ *
+ * @param      inputImage   The input float array
+ * @param      outputImage  The output float array
+ * @param[in]  rows         The number of rows in the image
+ * @param[in]  cols         The number of columns in the image
+ * @param[in]  window       The window to use in the filter
+ * @param[in]  sigmaD       The distance parameter
+ * @param[in]  sigmaR       The intensity parameter
+ */
 void bilateralNaiveGpu(
     float* inputImage,
     float* outputImage,
@@ -244,6 +277,19 @@ void bilateralNaiveGpu(
     checkCudaErrors(cudaStatus);    
 }
 
+/**
+ * @brief      Wrapper function for optimized CUDA kernels. Optmizations include
+ *             loop unrolling and separating the fundamental convolution that
+ *             occurs during the bilateral filter.
+ *
+ * @param      inputImage   The input float array
+ * @param      outputImage  The output float array
+ * @param[in]  rows         The number of rows in the image
+ * @param[in]  cols         The number of columns in the image
+ * @param[in]  window       The window to use in the filter
+ * @param[in]  sigmaD       The distance parameter
+ * @param[in]  sigmaR       The intensity parameter
+ */
 void bilateralOptimizedGpu(
     float* inputImage,
     float* outputImage,

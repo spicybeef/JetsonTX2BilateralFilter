@@ -4,6 +4,7 @@
 
 extern "C"
 {
+    // This is defined in main.cpp
     float expf_michel (float x);
 }
 
@@ -99,12 +100,28 @@ void bilateralNaiveCpu(float* inputFloat, float* outputFloat, int rows, int cols
     }
 }
 
+/**
+ * @brief      An optimized version of the CPU bilateral filter. Optmizations
+ *             include using OpenMP for threading of the main loop and changing
+ *             memory access to be sequential by turning the outer loops into a
+ *             single loop.
+ *
+ * @param      inputFloat   The input float array
+ * @param      outputFloat  The output float array
+ * @param[in]  rows         The number of rows in the image
+ * @param[in]  cols         The number of columns in the image
+ * @param[in]  window       The window to use in the filter
+ * @param[in]  sigmaD       The distance parameter
+ * @param[in]  sigmaR       The intensity parameter
+ */
 void bilateralOptimizedCpu(float* inputFloat, float* outputFloat, int rows, int cols, uint32_t window, float sigmaD, float sigmaR)
 {
     int totalPixels = rows * cols;
+    float* buffer = new float [rows * cols];
 
-    // #pragma omp parallel num_threads(4)
-    // #pragma omp for
+    // Moved variable declaration into for loops as each index now becomes its
+    // own thread. Using OpenMP pragmas to enable multithreading of individual
+    // pixel computations. Split into column and row convolutions.
     #pragma omp parallel for
     for (int pixel = 0; pixel < totalPixels; pixel++)
     {
@@ -114,34 +131,58 @@ void bilateralOptimizedCpu(float* inputFloat, float* outputFloat, int rows, int 
         int col = pixel % cols;
         for (int windowCol = 0; windowCol < window; windowCol++)
         {
-            for (int windowRow = 0; windowRow < window; windowRow++)
+            int neighbourCol = col - (window / 2) - windowCol;
+
+            // Prevent us indexing into regions that don't exist
+            if (neighbourCol < 0)
             {
-                int neighbourCol = col - (window / 2) - windowCol;
-                int neighbourRow = row - (window / 2) - windowRow;
-
-                // Prevent us indexing into regions that don't exist
-                if (neighbourCol < 0)
-                {
-                    neighbourCol = 0;
-                }
-                if (neighbourRow < 0)
-                {
-                    neighbourRow = 0;
-                }
-                
-                float neighbourPixel = inputFloat[neighbourCol + neighbourRow * cols];
-                float currentPixel = inputFloat[col + row * cols];
-
-                // Intensity factor
-                float gR = gaussian(neighbourPixel - currentPixel, 0.0, sigmaR);
-                // Distance factor
-                float gD = gaussian(distance(col, row, neighbourCol, neighbourRow), 0.0, sigmaD);
-
-                filteredPixel += neighbourPixel * (gR * gD);
-
-                wP += (gR * gD);
+                neighbourCol = 0;
             }
+            
+            float neighbourPixel = inputFloat[neighbourCol + row * cols];
+            float currentPixel = inputFloat[pixel];
+
+            // Intensity factor
+            float gR = gaussian(neighbourPixel - currentPixel, 0.0, sigmaR);
+            // Distance factor
+            float gD = gaussian(distance(col, row, neighbourCol, row), 0.0, sigmaD);
+
+            filteredPixel += neighbourPixel * (gR * gD);
+
+            wP += (gR * gD);
         }
-        outputFloat[col + row * cols] = filteredPixel / wP;
+        buffer[pixel] = filteredPixel / wP;
+    }
+
+    #pragma omp parallel for
+    for (int pixel = 0; pixel < totalPixels; pixel++)
+    {
+        float filteredPixel = 0;
+        float wP = 0;
+        int row = pixel / cols;
+        int col = pixel % cols;
+        for (int windowRow = 0; windowRow < window; windowRow++)
+        {
+            int neighbourRow = row - (window / 2) - windowRow;
+
+            // Prevent us indexing into regions that don't exist
+            if (neighbourRow < 0)
+            {
+                neighbourRow = 0;
+            }
+            
+            float neighbourPixel = buffer[col + neighbourRow * cols];
+            float currentPixel = buffer[pixel];
+
+            // Intensity factor
+            float gR = gaussian(neighbourPixel - currentPixel, 0.0, sigmaR);
+            // Distance factor
+            float gD = gaussian(distance(col, row, col, neighbourRow), 0.0, sigmaD);
+
+            filteredPixel += neighbourPixel * (gR * gD);
+
+            wP += (gR * gD);
+        }
+        outputFloat[pixel] = filteredPixel / wP;
     }
 }

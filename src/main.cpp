@@ -13,7 +13,11 @@
 
 #define SHOW_OUTPUT
 
-// Replication of exp implementation for assembly analysis
+// Duplication of exp implementation for assembly analysis. Wasn't able to look
+// at the disassembly of built-in expf function because it made a call into a
+// library I couldn't disassemble easily. This is taken directly out of the GNU
+// C Library (glibc). For some reason this is faster than using the builtin expf
+// function (???).
 extern "C"
 {
     static inline double_t roundtoint (double_t x)
@@ -154,6 +158,14 @@ void floatPtrToMat(const float* inputFloat, cv::Mat** outputMat, int rows, int c
 
 using namespace std::chrono;
 
+/**
+ * @brief      The main function of the program
+ *
+ * @param[in]  argc  The argc
+ * @param      argv  The argv
+ *
+ * @return     0 if everything went well, -1 if something choked
+ */
 int main( int argc, char** argv )
 {
     cv::String inputImagePath("input.png");
