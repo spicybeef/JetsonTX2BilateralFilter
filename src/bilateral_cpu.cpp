@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include <math.h>
 #include <arm_neon.h>
+#include <memory.h>
+
+// Making this the size of the window for now
+#define SIMD_SIZE 10
 
 // Duplication of exp implementation for assembly analysis. Wasn't able to look
 // at the disassembly of built-in expf function because it made a call into a
@@ -113,6 +117,46 @@ float distance(int x0, int y0, int x1, int y1)
     return static_cast<float>(sqrtf( (x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1) ));
 }
 
+void distanceSimd(int* x0, int* y0, int* x1, int* y1, float* distResult)
+{
+    int tempX[SIMD_SIZE];
+    int tempY[SIMD_SIZE];
+    float tempXPow[SIMD_SIZE];
+    float tempYPow[SIMD_SIZE];
+    float tempSqrt[SIMD_SIZE];
+
+    for(int i = 0; i < SIMD_SIZE; i++)
+    {
+        tempX[i] = x0[i] - x1[i];
+    }
+
+    for(int i = 0; i < SIMD_SIZE; i++)
+    {
+        tempY[i] = y0[i] - y1[i];
+    }
+
+    for(int i = 0; i < SIMD_SIZE; i++)
+    {
+        tempXPow[i] = tempX[i] * tempX[i];
+    }
+
+    for(int i = 0; i < SIMD_SIZE; i++)
+    {
+        tempYPow[i] = tempY[i] * tempY[i];
+    }
+
+    for(int i = 0; i < SIMD_SIZE; i++)
+    {
+        tempSqrt[i] = tempXPow[i] + tempYPow[i];        
+    }
+
+    for(int i = 0; i < SIMD_SIZE; i++)
+    {
+        distResult[i] = sqrtf(tempSqrt[i]);
+    }
+
+}
+
 /**
  * @brief      Calculates the one-dimensional Gaussian function for a given
  *             point x
@@ -126,7 +170,31 @@ float distance(int x0, int y0, int x1, int y1)
  */
 float gaussian(float x, float mu, float sigma)
 {
+
     return static_cast<float>(expf_michel(-((x - mu) * (x - mu))/(2 * sigma * sigma)) / (2 * M_PI * sigma * sigma));
+}
+
+void gaussianSimd(float* x, float sigma, float* gaussResult)
+{
+    float tempXPow[SIMD_SIZE];
+
+    float alpha = 2.0 * sigma * sigma;
+    float beta = alpha * M_PI;
+
+    for(int i = 0; i < SIMD_SIZE; i++)
+    {
+        tempXPow[i] = x[i] * x[i];
+    }
+
+    for(int i = 0; i < SIMD_SIZE; i++)
+    {
+        tempXPow[i] = -tempXPow[i] / alpha;
+    }
+
+    for(int i = 0; i < SIMD_SIZE; i++)
+    {
+        gaussResult[i] = expf_michel(tempXPow[i]) / beta;
+    }
 }
 
 /**
@@ -272,6 +340,153 @@ void bilateralOptimizedCpu(float* inputFloat, float* outputFloat, int rows, int 
 
             wP += (gR * gD);
         }
+        outputFloat[pixel] = filteredPixel / wP;
+    }
+}
+
+/**
+ * @brief      An optimized version of the CPU bilateral filter. Optmizations
+ *             include using OpenMP for threading of the main loop and changing
+ *             memory access to be sequential by turning the outer loops into a
+ *             single loop. Also naively implements 10-wide SIMD instructions.
+ *
+ * @param      inputFloat   The input float array
+ * @param      outputFloat  The output float array
+ * @param[in]  rows         The number of rows in the image
+ * @param[in]  cols         The number of columns in the image
+ * @param[in]  window       The window to use in the filter
+ * @param[in]  sigmaD       The distance parameter
+ * @param[in]  sigmaR       The intensity parameter
+ */
+void bilateralOptimizedCpuSimd(float* inputFloat, float* outputFloat, int rows, int cols, uint32_t window, float sigmaD, float sigmaR)
+{
+    int totalPixels = rows * cols;
+    float* buffer = new float [rows * cols];
+
+    // Moved variable declaration into for loops as each index now becomes its
+    // own thread. Using OpenMP pragmas to enable multithreading of individual
+    // pixel computations. Split into column and row convolutions.
+    #pragma omp parallel for
+    for (int pixel = 0; pixel < totalPixels; pixel++)
+    {
+        float filteredPixel = 0;
+        float wP = 0;
+        float distances[SIMD_SIZE];
+        int currentCol[SIMD_SIZE];
+        int currentRow[SIMD_SIZE];
+        int neighbourCols[SIMD_SIZE];
+        float neighbourPixels[SIMD_SIZE];
+        float intensityDiffs[SIMD_SIZE];
+        float gRs[SIMD_SIZE];
+        float gDs[SIMD_SIZE];
+        int row = pixel / cols;
+        int col = pixel % cols;
+
+        for(int i = 0; i < SIMD_SIZE; i++)
+        {
+            currentCol[i] = col;
+            currentRow[i] = row;
+        }
+
+        for(int i = 0; i < window; i++)
+        {
+            neighbourCols[i] = col - (window / 2) - i;
+            // Prevent us indexing into regions that don't exist
+            if (neighbourCols[i] < 0)
+            {
+                neighbourCols[i] = 0;
+            }
+        }
+
+        for(int i = 0; i < window; i++)
+        {
+            neighbourPixels[i] = inputFloat[neighbourCols[i] + row * cols];
+        }
+
+        for(int i = 0; i < window; i++)
+        {
+           intensityDiffs[i] = neighbourPixels[i] - inputFloat[pixel]; 
+        }
+
+        // Intensity factor
+        gaussianSimd(intensityDiffs, sigmaR, gRs);
+        // Distances
+        distanceSimd(currentCol, currentRow, neighbourCols, currentRow, distances);
+        // Distance factor
+        gaussianSimd(distances, sigmaD, gDs);
+
+        for(int i = 0; i < window; i++)
+        {
+            filteredPixel += neighbourPixels[i] * gRs[i] * gDs[i];
+        }
+
+        for(int i = 0; i < window; i++)
+        {
+            wP += gRs[i] * gDs[i];
+        }
+
+        buffer[pixel] = filteredPixel / wP;
+    }
+
+    #pragma omp parallel for
+    for (int pixel = 0; pixel < totalPixels; pixel++)
+    {
+        float filteredPixel = 0;
+        float wP = 0;
+        float distances[SIMD_SIZE];
+        int currentCol[SIMD_SIZE];
+        int currentRow[SIMD_SIZE];
+        int neighbourRows[SIMD_SIZE];
+        float neighbourPixels[SIMD_SIZE];
+        float intensityDiffs[SIMD_SIZE];
+        float gRs[SIMD_SIZE];
+        float gDs[SIMD_SIZE];
+        int row = pixel / cols;
+        int col = pixel % cols;
+
+        for(int i = 0; i < SIMD_SIZE; i++)
+        {
+            currentCol[i] = col;
+            currentRow[i] = row;
+        }
+
+        for(int i = 0; i < window; i++)
+        {
+            neighbourRows[i] = row - (window / 2) - i;
+            // Prevent us indexing into regions that don't exist
+            if (neighbourRows[i] < 0)
+            {
+                neighbourRows[i] = 0;
+            }
+        }
+
+        for(int i = 0; i < window; i++)
+        {
+            neighbourPixels[i] = buffer[col + neighbourRows[i] * cols];
+        }
+
+        for(int i = 0; i < window; i++)
+        {
+           intensityDiffs[i] = neighbourPixels[i] - buffer[pixel]; 
+        }
+
+        // Intensity factor
+        gaussianSimd(intensityDiffs, sigmaR, gRs);
+        // Distances
+        distanceSimd(currentCol, currentRow, currentCol, neighbourRows, distances);
+        // Distance factor
+        gaussianSimd(distances, sigmaD, gDs);
+
+        for(int i = 0; i < window; i++)
+        {
+            filteredPixel += neighbourPixels[i] * gRs[i] * gDs[i];
+        }
+
+        for(int i = 0; i < window; i++)
+        {
+            wP += gRs[i] * gDs[i];
+        }
+
         outputFloat[pixel] = filteredPixel / wP;
     }
 }

@@ -124,10 +124,12 @@ int main( int argc, char** argv )
     float* floatProcessedNaiveCpu = new float [inputImage.rows * inputImage.cols];
     float* floatProcessedNaiveGpu = new float [inputImage.rows * inputImage.cols];
     float* floatProcessedOptimizedCpu = new float [inputImage.rows * inputImage.cols];
+    float* floatProcessedOptimizedCpuSimd = new float [inputImage.rows * inputImage.cols];
     float* floatProcessedOptimizedGpu = new float [inputImage.rows * inputImage.cols];
     cv::Mat* outputImagePtrNaiveCpu;
     cv::Mat* outputImagePtrNaiveGpu;
     cv::Mat* outputImagePtrOptimizedCpu;
+    cv::Mat* outputImagePtrOptimizedCpuSimd;
     cv::Mat* outputImagePtrOptimizedGpu;
 
     // Intermediate float array
@@ -157,6 +159,14 @@ int main( int argc, char** argv )
     floatPtrToMat(floatProcessedOptimizedCpu, &outputImagePtrOptimizedCpu, inputImage.rows, inputImage.cols);
     std::cout << "Optimized CPU bilateral took: " << durationOptimizedCpu << " ms" << std::endl;
 
+    // Optimized CPU SIMD
+    high_resolution_clock::time_point t1OptimizedCpuSimd = high_resolution_clock::now();
+    bilateralOptimizedCpuSimd(floatIntermediate, floatProcessedOptimizedCpuSimd, inputImage.rows, inputImage.cols, windowSize, sigmaD, sigmaR);
+    high_resolution_clock::time_point t2OptimizedCpuSimd = high_resolution_clock::now();
+    auto durationOptimizedCpuSimd = duration_cast<milliseconds>(t2OptimizedCpuSimd - t1OptimizedCpuSimd).count();
+    floatPtrToMat(floatProcessedOptimizedCpuSimd, &outputImagePtrOptimizedCpuSimd, inputImage.rows, inputImage.cols);
+    std::cout << "Optimized CPU SIMD bilateral took: " << durationOptimizedCpuSimd << " ms" << std::endl;
+
     // Optimized GPU
     high_resolution_clock::time_point t1OptimizedGpu = high_resolution_clock::now();
     bilateralOptimizedGpu(floatIntermediate, floatProcessedOptimizedGpu, inputImage.rows, inputImage.cols, windowSize, sigmaD, sigmaR);
@@ -181,6 +191,9 @@ int main( int argc, char** argv )
     // Optimized CPU Version
     cv::namedWindow("Output Optimized CPU", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output Optimized CPU", *outputImagePtrOptimizedCpu);
+    // Optimized CPU SIMD Version
+    cv::namedWindow("Output Optimized CPU SIMD", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Output Optimized CPU SIMD", *outputImagePtrOptimizedCpuSimd);
     // Optimized GPU Version
     cv::namedWindow("Output Optimized GPU", cv::WINDOW_AUTOSIZE);
     cv::imshow("Output Optimized GPU", *outputImagePtrOptimizedGpu);
