@@ -117,6 +117,15 @@ float distance(int x0, int y0, int x1, int y1)
     return static_cast<float>(sqrtf( (x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1) ));
 }
 
+/**
+ * @brief      Calculates the Euclidean distance between an array of two points.
+ *
+ * @param[in]  x0          The x0 coordinate array
+ * @param[in]  y0          The y0 coordinate array
+ * @param[in]  x1          The x1 coordinate array
+ * @param[in]  y1          The y1 coordinate array
+ * @param      distResult  A pointer to the resulting distance array
+ */
 void distanceSimd(int* x0, int* y0, int* x1, int* y1, float* distResult)
 {
     int tempX[SIMD_SIZE];
@@ -174,6 +183,14 @@ float gaussian(float x, float mu, float sigma)
     return static_cast<float>(expf_michel(-((x - mu) * (x - mu))/(2 * sigma * sigma)) / (2 * M_PI * sigma * sigma));
 }
 
+/**
+ * @brief      Calculates the one-dimensional Gaussian for an array of given
+ *             points
+ *
+ * @param      x            The pointer to the points to calculate the Gaussian
+ * @param[in]  sigma        The standard deviation of the distribution
+ * @param      gaussResult  An array to the gaussian results
+ */
 void gaussianSimd(float* x, float sigma, float* gaussResult)
 {
     float tempXPow[SIMD_SIZE];
